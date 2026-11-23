@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>國小體育器材借還系統</title>
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <!-- Custom CSS -->
+  <link href="style.css" rel="stylesheet" />
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body class="bg-light">
+
+  <!-- 頂部導覽列 -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top shadow-sm">
+    <div class="container">
+      <a class="navbar-brand fw-bold d-flex align-items-center" href="#">
+        <i class="bi bi-trophy-fill me-2 text-warning"></i>
+        <span>國小體育器材借還系統</span>
+      </a>
+      <div id="navUserArea" class="d-none d-flex align-items-center gap-2">
+        <span class="text-white small d-none d-sm-inline" id="navUserName"></span>
+        <span class="badge bg-warning text-dark d-none" id="navAdminBadge">體育組管理員</span>
+        <button class="btn btn-outline-light btn-sm" id="btnLogout">
+          <i class="bi bi-box-arrow-right"></i> 登出
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container py-4">
+
+    <!-- 畫面 1：未登入 / 登入畫面 -->
+    <section id="viewLogin" class="row justify-content-center mt-4">
+      <div class="col-md-6 col-lg-5">
+        <div class="card border-0 shadow-sm rounded-4 text-center p-4">
+          <div class="mb-3">
+            <div class="login-icon-circle mx-auto bg-primary bg-opacity-10 text-primary">
+              <i class="bi bi-dribbble fs-1"></i>
+            </div>
+          </div>
+          <h4 class="fw-bold mb-2">歡迎使用體育器材借還系統</h4>
+          <p class="text-muted small mb-4">
+            請使用您的<strong>學校 Google 帳號</strong>登入。<br />
+            初次使用需填寫資料申請，經體育組審核通過後即可開始借還器材。
+          </p>
+          <div class="d-flex justify-content-center my-2">
+            <div id="googleBtnContainer"></div>
+          </div>
+          <div id="loginLoading" class="d-none mt-3 text-primary small">
+            <div class="spinner-border spinner-border-sm me-1"></div> 正在驗證帳號權限...
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 畫面 2：首次登入申請表單 -->
+    <section id="viewApply" class="d-none row justify-content-center mt-3">
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 p-4">
+          <h5 class="fw-bold mb-1"><i class="bi bi-person-plus-fill text-primary me-2"></i>教師帳號啟用申請</h5>
+          <p class="text-muted small mb-3">系統偵測到您為首次登入，請填寫以下資料送交體育組審核：</p>
+          <form id="formApply">
+            <div class="mb-3">
+              <label class="form-label small fw-bold">登入帳號 (Google Email)</label>
+              <input type="text" class="form-control bg-light" id="applyEmail" readonly />
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">教師姓名 <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="applyName" placeholder="例如：王小明" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">任教班級 / 職稱 <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="applyTitleClass" placeholder="例如：5年3班導師、體育科任" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold">校內分機或聯絡電話</label>
+              <input type="text" class="form-control" id="applyPhone" placeholder="選填，方便器材問題聯繫" />
+            </div>
+            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
+              <i class="bi bi-send me-1"></i> 送出帳號申請
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- 畫面 3：待審核 / 已停權提示 -->
+    <section id="viewPending" class="d-none row justify-content-center mt-4">
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 p-4 text-center">
+          <i id="pendingIcon" class="bi bi-hourglass-split fs-1 text-warning mb-3"></i>
+          <h5 class="fw-bold" id="pendingTitle">帳號審核中</h5>
+          <p class="text-muted small mb-3" id="pendingDesc">
+            您的帳號申請已送出，請聯繫體育組協助核准。<br />審核完成後，請重新整理網頁即可使用。
+          </p>
+          <div class="d-flex justify-content-center gap-2">
+            <button class="btn btn-outline-primary btn-sm" onclick="location.reload()">
+              <i class="bi bi-arrow-clockwise"></i> 重新檢查狀態
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 畫面 4：主系統操作區 (已核准老師/管理員) -->
+    <section id="viewApp" class="d-none">
+
+      <!-- 功能頁籤導覽 (手機自適應) -->
+      <ul class="nav nav-pills nav-fill bg-white p-2 rounded-3 shadow-sm mb-4 gap-1" id="mainTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active fw-bold" data-bs-toggle="pill" data-bs-target="#tabBorrow" type="button">
+            <i class="bi bi-cart-plus me-1"></i>借用器材
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link fw-bold position-relative" data-bs-toggle="pill" data-bs-target="#tabMyLogs" type="button">
+            <i class="bi bi-arrow-return-left me-1"></i>我的借還
+            <span id="badgeMyBorrowCount" class="badge rounded-pill bg-danger ms-1 d-none">0</span>
+          </button>
+        </li>
+        <li class="nav-item d-none" id="navItemAdmin" role="presentation">
+          <button class="nav-link fw-bold position-relative" data-bs-toggle="pill" data-bs-target="#tabAdmin" type="button">
+            <i class="bi bi-shield-lock me-1"></i>體育組管理
+            <span id="badgePendingUsers" class="badge rounded-pill bg-warning text-dark ms-1 d-none">0</span>
+          </button>
+        </li>
+      </ul>
+
+      <div class="tab-content">
+
+        <!-- 頁籤 1：借用器材 -->
+        <div class="tab-pane fade show active" id="tabBorrow">
+          <!-- 搜尋與分類篩選 -->
+          <div class="row g-2 mb-3">
+            <div class="col-12 col-md-5">
+              <div class="input-group shadow-sm">
+                <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control border-start-0" id="searchEqInput" placeholder="搜尋器材名稱 (例如：籃球、角錐)..." />
+              </div>
+            </div>
+            <div class="col-12 col-md-7">
+              <div class="d-flex gap-1 overflow-auto pb-1" id="categoryFilterGroup">
+                <!-- JS 動態生成分類按鈕 -->
+              </div>
+            </div>
+          </div>
+
+          <!-- 器材卡片清單 -->
+          <div class="row g-3" id="equipmentGrid">
+            <!-- JS 動態生成 -->
+          </div>
+        </div>
+
+        <!-- 頁籤 2：我的借還 -->
+        <div class="tab-pane fade" id="tabMyLogs">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0"><i class="bi bi-clock-history text-danger me-1"></i>目前借出中（待歸還）</h6>
+            <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()">
+              <i class="bi bi-arrow-clockwise"></i> 重新整理
+            </button>
+          </div>
+          <div id="myActiveLogsList" class="row g-3 mb-4"></div>
+
+          <h6 class="fw-bold mb-3"><i class="bi bi-check2-all text-success me-1"></i>近期歸還紀錄</h6>
+          <div class="table-responsive bg-white rounded-3 shadow-sm">
+            <table class="table table-hover align-middle mb-0 small">
+              <thead class="table-light">
+                <tr>
+                  <th>器材</th>
+                  <th>數量</th>
+                  <th>班級/用途</th>
+                  <th>借用時間</th>
+                  <th>歸還時間</th>
+                  <th>狀態</th>
+                </tr>
+              </thead>
+              <tbody id="myHistoryLogsTable"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 頁籤 3：體育組管理後台 -->
+        <div class="tab-pane fade" id="tabAdmin">
+          <ul class="nav nav-tabs mb-3" id="adminSubTabs">
+            <li class="nav-item">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#adminUsersPane">
+                教師審核與權限 <span id="subBadgePending" class="badge bg-danger d-none">0</span>
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#adminBorrowedPane">
+                全校借出總覽 (代還)
+              </button>
+            </li>
+            <li class="nav-item">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#adminEqPane">
+                器材庫存管理
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content">
+            <!-- 子頁籤 A：教師審核 -->
+            <div class="tab-pane fade show active" id="adminUsersPane">
+              <div class="table-responsive bg-white rounded-3 shadow-sm">
+                <table class="table table-hover align-middle mb-0 small">
+                  <thead class="table-light">
+                    <tr>
+                      <th>姓名 / 班級</th>
+                      <th>Email / 電話</th>
+                      <th>角色</th>
+                      <th>狀態</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminUsersTable"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 子頁籤 B：全校借出總覽 -->
+            <div class="tab-pane fade" id="adminBorrowedPane">
+              <h6 class="fw-bold text-danger mb-2">目前全校尚未歸還器材</h6>
+              <div class="table-responsive bg-white rounded-3 shadow-sm mb-4">
+                <table class="table table-hover align-middle mb-0 small">
+                  <thead class="table-light">
+                    <tr>
+                      <th>借用老師</th>
+                      <th>器材名稱</th>
+                      <th>數量</th>
+                      <th>使用班級 / 預計歸還</th>
+                      <th>借出時間</th>
+                      <th>管理操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminActiveLogsTable"></tbody>
+                </table>
+              </div>
+
+              <h6 class="fw-bold text-secondary mb-2">全校近期完整紀錄 (最新 100 筆)</h6>
+              <div class="table-responsive bg-white rounded-3 shadow-sm">
+                <table class="table table-sm align-middle mb-0 small">
+                  <thead class="table-light">
+                    <tr>
+                      <th>老師</th>
+                      <th>器材</th>
+                      <th>數量</th>
+                      <th>借出</th>
+                      <th>歸還</th>
+                      <th>狀態 / 備註</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminAllLogsTable"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- 子頁籤 C：器材庫存管理 -->
+            <div class="tab-pane fade" id="adminEqPane">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="small text-muted">可在此新增器材、調整總數量或修正目前可借數量</span>
+                <button class="btn btn-success btn-sm fw-bold" onclick="openEqModal()">
+                  <i class="bi bi-plus-lg"></i> 新增器材
+                </button>
+              </div>
+              <div class="table-responsive bg-white rounded-3 shadow-sm">
+                <table class="table table-hover align-middle mb-0 small">
+                  <thead class="table-light">
+                    <tr>
+                      <th>編號 / 名稱</th>
+                      <th>分類</th>
+                      <th>可借 / 總數</th>
+                      <th>位置</th>
+                      <th>狀態</th>
+                      <th>編輯</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminEqTable"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- 懸浮借用清單按鈕 (購物車) -->
+  <button id="floatingCartBtn" class="btn btn-primary btn-lg rounded-pill shadow-lg d-none" data-bs-toggle="offcanvas" data-bs-target="#cartOffcanvas">
+    <i class="bi bi-basket2-fill me-1"></i>
+    借用清單 (<span id="cartCount">0</span>)
+  </button>
+
+  <!-- 右側/底部 借用清單抽屜 -->
+  <div class="offcanvas offcanvas-end" tabindex="-1" id="cartOffcanvas">
+    <div class="offcanvas-header bg-primary text-white">
+      <h5 class="offcanvas-title fw-bold"><i class="bi bi-basket2-fill me-2"></i>確認借用器材</h5>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column">
+      <div id="cartItemsList" class="flex-grow-1 overflow-auto mb-3"></div>
+
+      <form id="formBorrowSubmit" class="border-top pt-3">
+        <div class="mb-2">
+          <label class="form-label small fw-bold">使用班級或用途 <span class="text-danger">*</span></label>
+          <input type="text" class="form-control form-control-sm" id="borrowClassUsed" placeholder="例如：4年2班體育課、田徑隊練習" required />
+        </div>
+        <div class="mb-3">
+          <label class="form-label small fw-bold">預計歸還時間/節次 <span class="text-danger">*</span></label>
+          <select class="form-select form-select-sm" id="borrowExpectedReturn" required>
+            <option value="">-- 請選擇預計歸還時間 --</option>
+            <option value="第 1 節下課">第 1 節下課</option>
+            <option value="第 2 節下課">第 2 節下課</option>
+            <option value="第 3 節下課">第 3 節下課</option>
+            <option value="第 4 節下課 (午休前)">第 4 節下課 (午休前)</option>
+            <option value="第 5 節下課">第 5 節下課</option>
+            <option value="第 6 節下課">第 6 節下課</option>
+            <option value="第 7 節放學前">第 7 節放學前</option>
+            <option value="課後社團/校隊結束後">課後社團/校隊結束後</option>
+            <option value="其他 (當日歸還)">其他 (當日歸還)</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-success w-100 fw-bold py-2">
+          <i class="bi bi-check-circle me-1"></i> 送出借用登記
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 管理員編輯/新增器材 Modal -->
+  <div class="modal fade" id="eqModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="formEqSave">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold" id="eqModalTitle">新增器材</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="eqEditId" />
+            <div class="row g-2">
+              <div class="col-8">
+                <label class="form-label small fw-bold">器材名稱 *</label>
+                <input type="text" class="form-control" id="eqEditName" required />
+              </div>
+              <div class="col-4">
+                <label class="form-label small fw-bold">單位 *</label>
+                <input type="text" class="form-control" id="eqEditUnit" placeholder="顆/支/組" required />
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-bold">分類 *</label>
+                <input type="text" class="form-control" id="eqEditCategory" list="categorySuggestions" required />
+                <datalist id="categorySuggestions">
+                  <option value="球類"></option>
+                  <option value="棒壘類"></option>
+                  <option value="防護與識別"></option>
+                  <option value="標誌器材"></option>
+                  <option value="田徑與體適能"></option>
+                  <option value="計時與發令"></option>
+                  <option value="維護工具"></option>
+                </datalist>
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-bold">存放位置</label>
+                <input type="text" class="form-control" id="eqEditLocation" placeholder="例如：球車A" />
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-bold">總數量 *</label>
+                <input type="number" class="form-control" id="eqEditTotal" min="0" required />
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-bold">目前可借數量 *</label>
+                <input type="number" class="form-control" id="eqEditAvailable" min="0" required />
+              </div>
+              <div class="col-12">
+                <label class="form-label small fw-bold">備註說明</label>
+                <input type="text" class="form-control" id="eqEditNote" />
+              </div>
+              <div class="col-12 mt-2">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="eqEditActive" checked />
+                  <label class="form-check-label small" for="eqEditActive">開放借用中 (取消勾選則隱藏停用)</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+            <button type="submit" class="btn btn-primary fw-bold">儲存設定</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 全域 Loading 遮罩 -->
+  <div id="globalLoader" class="d-none">
+    <div class="spinner-border text-light" style="width: 3rem; height: 3rem;"></div>
+    <div class="text-white mt-2 fw-bold">資料處理中，請稍候...</div>
+  </div>
+
+  <!-- Bootstrap 5 & SweetAlert2 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Main App JS -->
+  <script src="app.js"></script>
+</body>
+</html>
